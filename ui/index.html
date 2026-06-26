@@ -1,0 +1,1105 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>OutboundAI — Dashboard</title>
+<script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.3/dist/chart.umd.min.js"></script>
+<style>
+*,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
+:root{
+  --bg:#0d0d0d; --card:#161616; --border:#252525;
+  --accent:#00ff88; --accent2:#00ccff; --danger:#ff4d4d; --warn:#ffaa00;
+  --muted:#5a5a5a; --text:#e0e0e0; --text2:#aaa;
+  --mono:'Courier New',monospace; --sans:'Segoe UI',system-ui,sans-serif; --r:8px;
+}
+body{background:var(--bg);color:var(--text);font-family:var(--sans);min-height:100vh;line-height:1.5;font-size:14px}
+h1{font-size:22px;font-weight:600}
+h2{font-size:16px;font-weight:600;margin-bottom:12px;color:var(--accent)}
+h3{font-size:14px;font-weight:600;margin-bottom:8px;color:var(--text2)}
+a{color:var(--accent2)}
+.header{background:var(--card);border-bottom:1px solid var(--border);padding:12px 24px;display:flex;align-items:center;gap:16px;position:sticky;top:0;z-index:100}
+.header h1{font-size:18px;color:var(--accent)}.header span{color:var(--text2);font-size:12px}
+.nav{display:flex;gap:2px;flex-wrap:wrap;padding:8px 24px;background:var(--card);border-bottom:1px solid var(--border);position:sticky;top:52px;z-index:99}
+.nav button{background:none;border:none;color:var(--text2);padding:6px 12px;cursor:pointer;border-radius:var(--r);font-size:12px;white-space:nowrap;transition:all .15s}
+.nav button:hover{background:var(--border);color:var(--text)}
+.nav button.active{background:var(--accent);color:#000;font-weight:600}
+.main{padding:16px 24px;max-width:1400px;margin:0 auto}
+.panel{display:none}.panel.active{display:block}
+.card{background:var(--card);border:1px solid var(--border);border-radius:var(--r);padding:16px;margin-bottom:16px}
+.card p{color:var(--text2);font-size:12px}
+.flex{display:flex;gap:12px;flex-wrap:wrap}
+.flex-center{align-items:center}
+.grid-4{display:grid;grid-template-columns:repeat(auto-fit,minmax(180px,1fr));gap:12px}
+.kpi{text-align:center;padding:16px}.kpi .num{font-size:28px;font-weight:700;color:var(--accent)}.kpi .num.danger{color:var(--danger)}.kpi .num.warn{color:var(--warn)}.kpi .label{font-size:11px;color:var(--text2);margin-top:4px}
+label{display:block;font-size:12px;color:var(--text2);margin-bottom:4px;margin-top:8px}
+input,select,textarea{width:100%;padding:8px 10px;background:var(--bg);border:1px solid var(--border);border-radius:var(--r);color:var(--text);font-size:13px;font-family:var(--sans);outline:none;transition:border-color .15s}
+input:focus,select:focus,textarea:focus{border-color:var(--accent)}
+textarea{min-height:80px;resize:vertical;font-family:var(--mono);font-size:12px}
+textarea.big{min-height:300px}
+select{appearance:auto;cursor:pointer}
+.btn{display:inline-flex;align-items:center;gap:6px;padding:8px 16px;border:none;border-radius:var(--r);cursor:pointer;font-size:13px;font-weight:500;transition:all .15s;background:var(--border);color:var(--text)}
+.btn:hover{filter:brightness(1.2)}
+.btn-primary{background:var(--accent);color:#000}.btn-primary:hover{background:#00cc6a}
+.btn-danger{background:var(--danger);color:#fff}
+.btn-sm{padding:4px 10px;font-size:11px}
+.btn-group{display:flex;gap:8px;margin-top:12px}
+table{width:100%;border-collapse:collapse;font-size:12px}
+th{text-align:left;padding:8px;border-bottom:2px solid var(--border);color:var(--text2);font-weight:600;font-size:11px;text-transform:uppercase}
+td{padding:8px;border-bottom:1px solid var(--border);vertical-align:middle}
+tr:hover td{background:rgba(0,255,136,.03)}
+.badge{display:inline-block;padding:2px 8px;border-radius:10px;font-size:10px;font-weight:600;text-transform:uppercase}
+.badge-ok{background:rgba(0,255,136,.15);color:var(--accent)}
+.badge-fail{background:rgba(255,77,77,.15);color:var(--danger)}
+.badge-warn{background:rgba(255,170,0,.15);color:var(--warn)}
+.badge-info{background:rgba(0,204,255,.15);color:var(--accent2)}
+.chart-container{position:relative;height:200px;margin-bottom:12px}
+.chart-container-sm{height:150px}
+.chips{display:flex;gap:6px;flex-wrap:wrap;margin-bottom:8px}
+.chip{font-size:10px;padding:3px 8px;background:var(--border);border-radius:10px;color:var(--text2)}
+.chip.val{color:var(--accent)}
+.configured{color:var(--accent);font-size:11px}
+.not-configured{color:var(--danger);font-size:11px}
+.toast{position:fixed;bottom:24px;right:24px;padding:12px 20px;border-radius:var(--r);font-size:13px;z-index:999;animation:fadeIn .2s;max-width:400px}
+.toast.ok{background:rgba(0,255,136,.15);border:1px solid var(--accent);color:var(--accent)}
+.toast.err{background:rgba(255,77,77,.15);border:1px solid var(--danger);color:var(--danger)}
+@keyframes fadeIn{from{opacity:0;transform:translateY(10px)}to{opacity:1;transform:translateY(0)}}
+.empty{text-align:center;padding:32px;color:var(--muted);font-size:13px}
+progress{width:100%;height:8px;border-radius:4px;border:none;margin:8px 0}
+progress::-webkit-progress-bar{background:var(--border);border-radius:4px}
+progress::-webkit-progress-value{background:var(--accent);border-radius:4px}
+.pagination{display:flex;gap:8px;align-items:center;margin-top:12px}
+.pagination button{padding:4px 10px;background:var(--border);border:none;border-radius:var(--r);color:var(--text);cursor:pointer;font-size:12px}
+.pagination span{font-size:12px;color:var(--text2)}
+.inline-edit{background:var(--bg);border:1px solid var(--border);border-radius:var(--r);padding:4px 8px;color:var(--text);font-size:12px;width:200px}
+.settings-group{margin-bottom:16px;padding-bottom:16px;border-bottom:1px solid var(--border)}
+.settings-group:last-child{border-bottom:none;margin-bottom:0}
+.settings-group h3{display:flex;align-items:center;gap:8px}
+.toggle-wrap{display:flex;align-items:center;gap:12px;padding:6px 0}
+.toggle-wrap label{margin:0;cursor:pointer}
+input[type=checkbox]{width:auto;accent-color:var(--accent);cursor:pointer}
+.small-input{width:auto;display:inline-block}
+.chart-row{display:grid;grid-template-columns:1fr 1fr;gap:16px}@media(max-width:768px){.chart-row{grid-template-columns:1fr}}
+.config-chip{display:flex;gap:4px;align-items:center}
+.eye-btn{background:none;border:none;color:var(--text2);cursor:pointer;font-size:11px;padding:2px 6px}
+pre.log-line{padding:2px 0;font-family:var(--mono);font-size:11px;margin:0;border-bottom:1px solid rgba(255,255,255,.03);white-space:pre-wrap;word-break:break-all}
+.log-ts{color:var(--muted)}.log-level{font-weight:600}.log-source{color:var(--accent2)}
+.log-refresh-bar{display:flex;align-items:center;gap:12px;margin-bottom:8px;font-size:11px}
+</style>
+</head>
+<body>
+
+<div class="header">
+  <h1>▣ OutboundAI</h1>
+  <span>mass calling platform</span>
+</div>
+
+<div class="nav" id="nav">
+  <button class="active" data-tab="stats">📊 Stats</button>
+  <button data-tab="single-call">📞 Single Call</button>
+  <button data-tab="batch-call">📋 Batch Call</button>
+  <button data-tab="campaigns">🚀 Campaigns</button>
+  <button data-tab="agents">🤖 Agents</button>
+  <button data-tab="prompt">✏️ AI Prompt</button>
+  <button data-tab="appointments">📅 Appointments</button>
+  <button data-tab="logs-tab">📝 Call Logs</button>
+  <button data-tab="crm">👥 CRM</button>
+  <button data-tab="settings">⚙️ Settings</button>
+  <button data-tab="syslogs">📋 Logs</button>
+  <button data-tab="setup">🔧 Setup</button>
+</div>
+
+<div class="main">
+
+<!-- ════════════ STATS ════════════ -->
+<div class="panel active" id="panel-stats">
+  <div class="flex flex-center" style="justify-content:space-between;margin-bottom:12px">
+    <h2>📊 Dashboard</h2>
+    <span style="font-size:11px;color:var(--text2)">updates every 10s</span>
+  </div>
+  <div class="grid-4" id="kpi-grid">
+    <div class="card kpi"><div class="num" id="kpi-total">—</div><div class="label">Total Calls</div></div>
+    <div class="card kpi"><div class="num" id="kpi-booked">—</div><div class="label">Booked</div></div>
+    <div class="card kpi"><div class="num warn" id="kpi-not-interested">—</div><div class="label">Not Interested</div></div>
+    <div class="card kpi"><div class="num" id="kpi-rate">—%</div><div class="label">Booking Rate</div></div>
+  </div>
+  <div class="card" style="margin-bottom:8px">
+    <h3>⚡ Live Config</h3>
+    <div class="chips" id="live-config"></div>
+  </div>
+  <div class="chart-row">
+    <div class="card"><h3>Outcomes</h3><div class="chart-container-sm"><canvas id="chart-outcomes"></canvas></div></div>
+    <div class="card"><h3>Calls (14 days)</h3><div class="chart-container-sm"><canvas id="chart-timeline"></canvas></div></div>
+  </div>
+</div>
+
+<!-- ════════════ SINGLE CALL ════════════ -->
+<div class="panel" id="panel-single-call">
+  <h2>📞 Single Call</h2>
+  <div class="card" style="max-width:480px">
+    <form id="call-form">
+      <label>Phone (E.164)</label>
+      <input type="tel" id="call-phone" placeholder="+919876543210" required />
+      <label>Lead Name</label>
+      <input type="text" id="call-lead" placeholder="Shreyas Raj" />
+      <label>Business Name</label>
+      <input type="text" id="call-biz" placeholder="our company" />
+      <label>Service Type</label>
+      <input type="text" id="call-service" placeholder="our service" />
+      <label>Agent Profile</label>
+      <select id="call-profile"><option value="">— Default —</option></select>
+      <label><input type="checkbox" id="call-custom-prompt-cb" /> Custom prompt</label>
+      <textarea id="call-custom-prompt" style="display:none;min-height:120px" placeholder="Override system prompt..."></textarea>
+      <div class="btn-group">
+        <button type="submit" class="btn btn-primary">📞 Call Now</button>
+      </div>
+      <div id="call-result" style="margin-top:8px;font-size:12px"></div>
+    </form>
+  </div>
+</div>
+
+<!-- ════════════ BATCH CALL ════════════ -->
+<div class="panel" id="panel-batch-call">
+  <h2>📋 Batch Call</h2>
+  <div class="card" style="max-width:600px">
+    <label>Agent Profile</label>
+    <select id="bc-profile"><option value="">— Default —</option></select>
+    <label>CSV File (columns: phone, lead_name, business_name, service_type)</label>
+    <input type="file" id="bc-csv" accept=".csv" />
+    <label>Delay between calls (seconds)</label>
+    <input type="number" id="bc-delay" value="3" min="1" max="60" />
+    <div class="btn-group">
+      <button class="btn" id="bc-parse">Parse CSV</button>
+      <button class="btn btn-primary" id="bc-start" disabled>📞 Start Batch</button>
+    </div>
+    <progress id="bc-progress" value="0" max="100" style="display:none"></progress>
+    <div id="bc-preview" style="margin-top:8px"></div>
+    <div id="bc-result" style="margin-top:8px;font-size:12px"></div>
+  </div>
+</div>
+
+<!-- ════════════ CAMPAIGNS ════════════ -->
+<div class="panel" id="panel-campaigns">
+  <h2>🚀 Campaigns</h2>
+  <div class="card" style="max-width:600px">
+    <h3>New Campaign</h3>
+    <form id="camp-form">
+      <label>Campaign Name</label>
+      <input type="text" id="camp-name" required />
+      <label>Schedule</label>
+      <div class="flex">
+        <select id="camp-schedule" style="flex:1">
+          <option value="once">Once (run immediately)</option>
+          <option value="daily">Daily</option>
+          <option value="weekdays">Weekdays (Mon-Fri)</option>
+        </select>
+        <input type="time" id="camp-time" value="09:00" style="width:120px" />
+      </div>
+      <label>Call Delay (seconds)</label>
+      <input type="number" id="camp-delay" value="3" min="1" max="60" />
+      <label>Agent Profile</label>
+      <select id="camp-profile"><option value="">— Default —</option></select>
+      <label><input type="checkbox" id="camp-custom-prompt-cb" /> Custom system prompt</label>
+      <textarea id="camp-prompt" style="display:none;min-height:80px"></textarea>
+      <label>Contacts CSV</label>
+      <input type="file" id="camp-csv" accept=".csv" />
+      <div class="btn-group">
+        <button type="submit" class="btn btn-primary">Create Campaign</button>
+      </div>
+      <div id="camp-result" style="margin-top:8px;font-size:12px"></div>
+    </form>
+  </div>
+  <div class="card">
+    <h3>Existing Campaigns</h3>
+    <div id="camp-list"><div class="empty">No campaigns yet</div></div>
+  </div>
+</div>
+
+<!-- ════════════ AGENTS ════════════ -->
+<div class="panel" id="panel-agents">
+  <h2>🤖 Agent Profiles</h2>
+  <div class="card" style="max-width:600px">
+    <h3 id="agent-form-title">Create Agent Profile</h3>
+    <form id="agent-form">
+      <input type="hidden" id="agent-edit-id" />
+      <label>Profile Name</label>
+      <input type="text" id="agent-name" required />
+      <label>Voice</label>
+      <select id="agent-voice">
+        <optgroup label="Female voices">
+          <option value="Aoede">Aoede — warm, expressive ⭐</option>
+          <option value="Achernar">Achernar — soft & clear</option>
+          <option value="Autonoe">Autonoe — natural female</option>
+          <option value="Callirrhoe">Callirrhoe — gentle female</option>
+          <option value="Despina">Despina — bright female</option>
+          <option value="Erinome">Erinome — smooth female</option>
+          <option value="Gacrux">Gacrux — rich female</option>
+          <option value="Kore">Kore — soft, calm</option>
+          <option value="Laomedeia">Laomedeia — light female</option>
+          <option value="Leda">Leda — clear female</option>
+          <option value="Pulcherrima">Pulcherrima — warm female</option>
+          <option value="Sulafat">Sulafat — smooth female</option>
+          <option value="Vindemiatrix">Vindemiatrix — professional female</option>
+          <option value="Zephyr">Zephyr — airy female</option>
+        </optgroup>
+        <optgroup label="Male voices">
+          <option value="Achird">Achird — clear male</option>
+          <option value="Algenib">Algenib — strong male</option>
+          <option value="Algieba">Algieba — rich male</option>
+          <option value="Alnilam">Alnilam — deep male</option>
+          <option value="Charon">Charon — calm, deep</option>
+          <option value="Enceladus">Enceladus — expressive male</option>
+          <option value="Fenrir">Fenrir — confident male</option>
+          <option value="Iapetus">Iapetus — steady male</option>
+          <option value="Orus">Orus — warm male</option>
+          <option value="Perseus">Perseus — clear male</option>
+          <option value="Puck">Puck — bright, energetic</option>
+          <option value="Rasalgethi">Rasalgethi — bold male</option>
+          <option value="Sadachbia">Sadachbia — natural male</option>
+          <option value="Sadaltager">Sadaltager — smooth male</option>
+          <option value="Schedar">Schedar — professional male</option>
+          <option value="Umbriel">Umbriel — deep, calm</option>
+          <option value="Zubenelgenubi">Zubenelgenubi — resonant male</option>
+        </optgroup>
+      </select>
+      <label>Model</label>
+      <select id="agent-model">
+        <option value="gemini-3.1-flash-live-preview">gemini-3.1-flash-live-preview ⭐</option>
+        <option value="gemini-2.5-flash-native-audio-preview-12-2025">gemini-2.5-flash-native-audio-preview-12-2025</option>
+      </select>
+      <label>Enabled Tools (JSON array, empty = all)</label>
+      <input type="text" id="agent-tools" value="[]" placeholder='["check_availability","book_appointment","end_call"]' />
+      <label>System Prompt</label>
+      <textarea id="agent-prompt" class="big" placeholder="Override system prompt for this agent..."></textarea>
+      <label><input type="checkbox" id="agent-default" /> Set as default</label>
+      <div class="btn-group">
+        <button type="submit" class="btn btn-primary">Save</button>
+        <button type="button" class="btn" id="agent-reset">Reset</button>
+      </div>
+    </form>
+  </div>
+  <div class="card">
+    <h3>Profiles</h3>
+    <div id="agent-list"><div class="empty">No profiles yet. Run supabase_schema.sql first.</div></div>
+  </div>
+</div>
+
+<!-- ════════════ PROMPT ════════════ -->
+<div class="panel" id="panel-prompt">
+  <h2>✏️ AI Prompt</h2>
+  <div class="card">
+    <p style="margin-bottom:8px">Global system prompt for all calls. Override per-call or per-agent-profile.</p>
+    <textarea id="prompt-editor" class="big"></textarea>
+    <div style="display:flex;justify-content:space-between;align-items:center;margin-top:8px">
+      <span id="prompt-chars" style="font-size:11px;color:var(--text2)">0 chars</span>
+    </div>
+    <div class="btn-group">
+      <button class="btn btn-primary" id="prompt-save">Save Prompt</button>
+      <button class="btn btn-danger" id="prompt-reset">Reset to Default</button>
+    </div>
+    <div id="prompt-result" style="margin-top:8px;font-size:12px"></div>
+  </div>
+</div>
+
+<!-- ════════════ APPOINTMENTS ════════════ -->
+<div class="panel" id="panel-appointments">
+  <h2>📅 Appointments</h2>
+  <div class="card">
+    <div class="flex flex-center" style="gap:8px;margin-bottom:12px">
+      <label style="margin:0;white-space:nowrap">Filter by date:</label>
+      <input type="date" id="appt-date" style="width:auto" />
+      <button class="btn btn-sm" id="appt-filter">Filter</button>
+      <button class="btn btn-sm" id="appt-clear-filter">Clear</button>
+    </div>
+    <div id="appt-list"><div class="empty">No appointments</div></div>
+  </div>
+</div>
+
+<!-- ════════════ CALL LOGS ════════════ -->
+<div class="panel" id="panel-logs-tab">
+  <h2>📝 Call Logs</h2>
+  <div class="card">
+    <div id="call-logs-table"><div class="empty">Loading...</div></div>
+    <div class="pagination" id="call-pagination">
+      <button id="call-prev">← Prev</button>
+      <span id="call-page-info">Page 1</span>
+      <button id="call-next">Next →</button>
+    </div>
+  </div>
+</div>
+
+<!-- ════════════ CRM ════════════ -->
+<div class="panel" id="panel-crm">
+  <h2>👥 CRM</h2>
+  <div class="card">
+    <div id="crm-list"><div class="empty">Loading...</div></div>
+  </div>
+  <div class="card" id="crm-detail" style="display:none">
+    <h3 id="crm-detail-title">Contact Detail</h3>
+    <div id="crm-detail-content"></div>
+  </div>
+</div>
+
+<!-- ════════════ SETTINGS ════════════ -->
+<div class="panel" id="panel-settings">
+  <h2>⚙️ Settings</h2>
+  <div class="card" id="settings-form">
+    <div class="settings-group">
+      <h3>🔊 LiveKit</h3>
+      <label>URL</label><input class="setting-input" data-key="LIVEKIT_URL" />
+      <label>API Key</label><input class="setting-input" data-key="LIVEKIT_API_KEY" type="password" />
+      <label>API Secret</label><input class="setting-input" data-key="LIVEKIT_API_SECRET" type="password" />
+      <button class="btn btn-primary btn-sm save-group" data-group="LIVEKIT_URL,LIVEKIT_API_KEY,LIVEKIT_API_SECRET">Save LiveKit</button>
+    </div>
+    <div class="settings-group">
+      <h3>🧠 Gemini AI</h3>
+      <label>API Key</label><input class="setting-input" data-key="GOOGLE_API_KEY" type="password" />
+      <label>Model</label>
+      <select class="setting-input" data-key="GEMINI_MODEL">
+        <option value="gemini-3.1-flash-live-preview">gemini-3.1-flash-live-preview ⭐</option>
+        <option value="gemini-2.5-flash-native-audio-preview-12-2025">gemini-2.5-flash-native-audio-preview-12-2025</option>
+      </select>
+      <label>Voice</label>
+      <select class="setting-input" data-key="GEMINI_TTS_VOICE">
+        <option value="Aoede">Aoede (default)</option>
+        <option value="Puck">Puck</option><option value="Charon">Charon</option>
+        <option value="Fenrir">Fenrir</option><option value="Perseus">Perseus</option>
+        <option value="Leda">Leda</option><option value="Kore">Kore</option>
+      </select>
+      <label><input class="setting-input" data-key="USE_GEMINI_REALTIME" type="checkbox" value="true" /> Use Gemini Live Realtime</label>
+      <button class="btn btn-primary btn-sm save-group" data-group="GOOGLE_API_KEY,GEMINI_MODEL,GEMINI_TTS_VOICE,USE_GEMINI_REALTIME">Save Gemini</button>
+    </div>
+    <div class="settings-group">
+      <h3>📞 Vobiz SIP</h3>
+      <label>SIP Domain</label><input class="setting-input" data-key="VOBIZ_SIP_DOMAIN" />
+      <label>Username</label><input class="setting-input" data-key="VOBIZ_USERNAME" />
+      <label>Password</label><input class="setting-input" data-key="VOBIZ_PASSWORD" type="password" />
+      <label>Outbound Number</label><input class="setting-input" data-key="VOBIZ_OUTBOUND_NUMBER" placeholder="+919876543210" />
+      <label>Default Transfer Number</label><input class="setting-input" data-key="DEFAULT_TRANSFER_NUMBER" placeholder="+919876543210" />
+      <div class="btn-group">
+        <button class="btn btn-primary btn-sm save-group" data-group="VOBIZ_SIP_DOMAIN,VOBIZ_USERNAME,VOBIZ_PASSWORD,VOBIZ_OUTBOUND_NUMBER,DEFAULT_TRANSFER_NUMBER">Save Vobiz</button>
+        <button class="btn btn-sm" id="create-trunk-btn">⚡ Create SIP Trunk</button>
+      </div>
+      <div id="trunk-result" style="margin-top:8px;font-size:12px"></div>
+    </div>
+    <div class="settings-group">
+      <h3>✉️ Twilio SMS</h3>
+      <label>Account SID</label><input class="setting-input" data-key="TWILIO_ACCOUNT_SID" />
+      <label>Auth Token</label><input class="setting-input" data-key="TWILIO_AUTH_TOKEN" type="password" />
+      <label>From Number</label><input class="setting-input" data-key="TWILIO_FROM_NUMBER" placeholder="+1234567890" />
+      <button class="btn btn-primary btn-sm save-group" data-group="TWILIO_ACCOUNT_SID,TWILIO_AUTH_TOKEN,TWILIO_FROM_NUMBER">Save Twilio</button>
+    </div>
+    <div class="settings-group">
+      <h3>☁️ S3 Recordings</h3>
+      <label>Access Key ID</label><input class="setting-input" data-key="S3_ACCESS_KEY_ID" />
+      <label>Secret Key</label><input class="setting-input" data-key="S3_SECRET_ACCESS_KEY" type="password" />
+      <label>Endpoint URL</label><input class="setting-input" data-key="S3_ENDPOINT_URL" placeholder="https://project.supabase.co/storage/v1/s3" />
+      <label>Region</label><input class="setting-input" data-key="S3_REGION" placeholder="ap-northeast-1" />
+      <label>Bucket</label><input class="setting-input" data-key="S3_BUCKET" placeholder="call-recordings" />
+      <button class="btn btn-primary btn-sm save-group" data-group="S3_ACCESS_KEY_ID,S3_SECRET_ACCESS_KEY,S3_ENDPOINT_URL,S3_REGION,S3_BUCKET">Save S3</button>
+    </div>
+    <div class="settings-group">
+      <h3>📅 Cal.com</h3>
+      <label>API Key</label><input class="setting-input" data-key="CALCOM_API_KEY" type="password" />
+      <label>Event Type ID</label><input class="setting-input" data-key="CALCOM_EVENT_TYPE_ID" />
+      <label>Timezone</label><input class="setting-input" data-key="CALCOM_TIMEZONE" placeholder="Asia/Kolkata" />
+      <button class="btn btn-primary btn-sm save-group" data-group="CALCOM_API_KEY,CALCOM_EVENT_TYPE_ID,CALCOM_TIMEZONE">Save Cal.com</button>
+    </div>
+    <div class="settings-group">
+      <h3>🔧 Tool Toggles</h3>
+      <p style="font-size:11px;color:var(--text2);margin-bottom:8px">JSON array of enabled tool names. Empty = all enabled.</p>
+      <input class="setting-input" data-key="ENABLED_TOOLS" placeholder='["check_availability","book_appointment"]' />
+      <button class="btn btn-primary btn-sm save-group" data-group="ENABLED_TOOLS">Save Tools</button>
+    </div>
+  </div>
+</div>
+
+<!-- ════════════ SYSTEM LOGS ════════════ -->
+<div class="panel" id="panel-syslogs">
+  <h2>📋 System Logs</h2>
+  <div class="card">
+    <div class="log-refresh-bar">
+      <span>Auto-refresh: <span id="log-refresh-status">on</span></span>
+      <button class="btn btn-sm" id="log-toggle-refresh">Pause</button>
+      <button class="btn btn-sm btn-danger" id="log-clear">Clear</button>
+      <select id="log-level" style="width:auto;display:inline-block">
+        <option value="">All levels</option>
+        <option value="info">Info</option>
+        <option value="warning">Warning</option>
+        <option value="error">Error</option>
+      </select>
+      <select id="log-source" style="width:auto;display:inline-block">
+        <option value="">All sources</option>
+        <option value="agent">Agent</option>
+        <option value="server">Server</option>
+      </select>
+    </div>
+    <div id="log-entries" style="max-height:500px;overflow-y:auto;background:var(--bg);padding:8px;border-radius:var(--r);font-family:var(--mono);font-size:11px">
+      <div class="empty">No logs</div>
+    </div>
+  </div>
+</div>
+
+<!-- ════════════ SETUP ════════════ -->
+<div class="panel" id="panel-setup">
+  <h2>🔧 Setup Guide</h2>
+  <div class="card">
+    <h3>Quick Start</h3>
+    <ol style="padding-left:20px;line-height:2">
+      <li>Run <code>supabase_schema.sql</code> in Supabase SQL Editor</li>
+      <li>Go to <strong>⚙️ Settings</strong> → fill LiveKit credentials → Save</li>
+      <li>Fill Google Gemini API Key → Save</li>
+      <li>Fill Vobiz SIP details → Save → click <strong>⚡ Create SIP Trunk</strong></li>
+      <li>Go to <strong>🤖 Agents</strong> → create an agent profile</li>
+      <li>Go to <strong>📞 Single Call</strong> → test with your number</li>
+      <li>Deploy via Coolify using the Dockerfile</li>
+    </ol>
+  </div>
+  <div class="card">
+    <h3>Cost Breakdown</h3>
+    <table><thead><tr><th>Service</th><th>Cost/min</th><th>Notes</th></tr></thead>
+    <tbody>
+      <tr><td>Vobiz SIP</td><td>₹1.00/min</td><td>Fixed telephony</td></tr>
+      <tr><td>LiveKit Cloud</td><td>₹0.17/min</td><td>Free tier: 100k min/mo</td></tr>
+      <tr><td>Gemini Live</td><td>₹0.03/min</td><td>Free tier covers most usage</td></tr>
+      <tr><td><strong>Total</strong></td><td><strong>≈ ₹1.20/min</strong></td><td>~₹2.40 per 2-min call</td></tr>
+    </tbody></table>
+  </div>
+</div>
+
+</div><!-- /main -->
+
+<script>
+// ═══════════════════════════════════════════════════════════════════
+// OutboundAI Dashboard — Full JavaScript
+// ═══════════════════════════════════════════════════════════════════
+
+const $ = id => document.getElementById(id);
+
+// ── Toast ──
+function toast(msg, type = 'ok') {
+  const el = document.createElement('div');
+  el.className = `toast ${type}`;
+  el.textContent = msg;
+  document.body.appendChild(el);
+  setTimeout(() => el.remove(), 4000);
+}
+
+// ── API helpers ──
+async function api(path, opts) {
+  const r = await fetch(path, opts);
+  if (!r.ok) {
+    const body = await r.text();
+    throw new Error(body.slice(0, 200));
+  }
+  return r.json();
+}
+function apiPost(path, body) {
+  return api(path, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(body) });
+}
+function apiDel(path) {
+  return api(path, { method: 'DELETE' });
+}
+
+// ── Tab switching ──
+document.querySelectorAll('.nav button').forEach(btn => {
+  btn.addEventListener('click', () => {
+    document.querySelectorAll('.nav button').forEach(b => b.classList.remove('active'));
+    document.querySelectorAll('.panel').forEach(p => p.classList.remove('active'));
+    btn.classList.add('active');
+    const panel = document.getElementById('panel-' + btn.dataset.tab);
+    if (panel) panel.classList.add('active');
+    // Load data on tab switch
+    const tab = btn.dataset.tab;
+    if (tab === 'stats') loadStats();
+    if (tab === 'logs-tab') loadCalls(currentCallPage);
+    if (tab === 'appointments') loadAppointments();
+    if (tab === 'syslogs') loadLogs();
+    if (tab === 'crm') loadCRM();
+    if (tab === 'campaigns') loadCampaigns();
+    if (tab === 'agents') loadAgentProfiles();
+    if (tab === 'prompt') loadPrompt();
+  });
+});
+
+// ── Charts ──
+let chartOutcomes = null, chartTimeline = null, chartDuration = null;
+function _mkChart(id, type, data, opts) {
+  const canvas = document.getElementById(id);
+  if (!canvas) return null;
+  const ctx = canvas.getContext('2d');
+  if (id === 'chart-outcomes' && chartOutcomes) { chartOutcomes.destroy(); chartOutcomes = null; }
+  if (id === 'chart-timeline' && chartTimeline) { chartTimeline.destroy(); chartTimeline = null; }
+  const chart = new Chart(ctx, { type, data, options: { responsive: true, maintainAspectRatio: false, ...opts } });
+  if (id === 'chart-outcomes') chartOutcomes = chart;
+  if (id === 'chart-timeline') chartTimeline = chart;
+  return chart;
+}
+
+// ── Stats ──
+async function loadStats() {
+  try {
+    const d = await api('/api/stats');
+    $('kpi-total').textContent = d.total_calls || 0;
+    $('kpi-booked').textContent = d.booked || 0;
+    $('kpi-not-interested').textContent = d.not_interested || 0;
+    $('kpi-rate').textContent = (d.booking_rate_percent || 0) + '%';
+
+    // Outcomes donut
+    const labels = Object.keys(d.outcomes || {});
+    const values = Object.values(d.outcomes || {});
+    _mkChart('chart-outcomes', 'doughnut', {
+      labels, datasets: [{ data: values, backgroundColor: ['#00ff88', '#ff4d4d', '#ffaa00', '#00ccff', '#5a5a5a'] }]
+    }, { plugins: { legend: { position: 'bottom', labels: { color: '#aaa', boxWidth: 10 } } } });
+
+    // Timeline line
+    const tl = d.timeline || [];
+    _mkChart('chart-timeline', 'line', {
+      labels: tl.map(t => t.date.slice(5)),
+      datasets: [{ data: tl.map(t => t.count), borderColor: '#00ff88', backgroundColor: 'rgba(0,255,136,.1)', fill: true, tension: .3, pointRadius: 2 }]
+    }, { plugins: { legend: { display: false } }, scales: { x: { ticks: { color: '#5a5a5a', maxTicksLimit: 7 } }, y: { ticks: { color: '#5a5a5a', stepSize: 1 } } } });
+
+    // Live config chips
+    const [settings, promptData] = await Promise.all([api('/api/settings'), api('/api/prompt')]);
+    const chips = [];
+    const LIVE = ['LIVEKIT_URL', 'GEMINI_MODEL', 'GEMINI_TTS_VOICE', 'VOBIZ_SIP_DOMAIN', 'OUTBOUND_TRUNK_ID'];
+    LIVE.forEach(k => {
+      const v = settings[k];
+      if (v && v.configured) chips.push(`<span class="chip">${k.replace(/_/g,' ')}</span><span class="chip val">${(v.value || '✓').slice(0, 30)}</span>`);
+    });
+    chips.push(`<span class="chip">Prompt</span><span class="chip val">${promptData.is_custom ? 'Custom ✓' : 'Default'}</span>`);
+    $('live-config').innerHTML = chips.join(' ');
+  } catch (e) { console.error('Stats load error:', e); }
+}
+
+// ── Single Call ──
+$('call-form').addEventListener('submit', async (e) => {
+  e.preventDefault();
+  const btn = e.target.querySelector('button[type=submit]');
+  btn.disabled = true; btn.textContent = '⏳ Dialing...';
+  $('call-result').innerHTML = '';
+  try {
+    const body = {
+      phone: $('call-phone').value.trim(),
+      lead_name: $('call-lead').value.trim() || 'there',
+      business_name: $('call-biz').value.trim() || 'our company',
+      service_type: $('call-service').value.trim() || 'our service',
+      agent_profile_id: $('call-profile').value || null,
+    };
+    if ($('call-custom-prompt-cb').checked && $('call-custom-prompt').value.trim()) {
+      body.system_prompt = $('call-custom-prompt').value.trim();
+    }
+    const r = await apiPost('/api/call', body);
+    $('call-result').innerHTML = `<span style="color:var(--accent)">✅ Dispatched → room: ${r.room}</span>`;
+    toast(`Call dispatched to ${body.phone}`);
+  } catch (e) {
+    $('call-result').innerHTML = `<span style="color:var(--danger)">❌ ${e.message}</span>`;
+  }
+  btn.disabled = false; btn.textContent = '📞 Call Now';
+});
+
+$('call-custom-prompt-cb').addEventListener('change', () => {
+  $('call-custom-prompt').style.display = $('call-custom-prompt-cb').checked ? 'block' : 'none';
+});
+
+// ── Batch Call ──
+let batchContacts = [];
+$('bc-parse').addEventListener('click', () => {
+  const file = $('bc-csv').files[0];
+  if (!file) return toast('Select a CSV file', 'err');
+  const reader = new FileReader();
+  reader.onload = (e) => {
+    const lines = e.target.result.split('\n').filter(l => l.trim());
+    if (lines.length < 2) return toast('CSV needs header + data rows', 'err');
+    const headers = lines[0].split(',').map(h => h.trim().toLowerCase());
+    const contacts = [];
+    for (let i = 1; i < lines.length; i++) {
+      const vals = lines[i].split(',').map(v => v.trim());
+      const obj = {};
+      headers.forEach((h, idx) => obj[h] = vals[idx] || '');
+      if (obj.phone) contacts.push(obj);
+    }
+    batchContacts = contacts;
+    $('bc-preview').innerHTML = `<span style="color:var(--accent)">📋 ${contacts.length} contacts parsed</span>
+      <table><thead><tr><th>Phone</th><th>Name</th></tr></thead>
+      <tbody>${contacts.slice(0, 10).map(c => `<tr><td>${c.phone}</td><td>${c.lead_name || '—'}</td></tr>`).join('')}</tbody></table>
+      ${contacts.length > 10 ? `<p style="color:var(--text2);font-size:11px">...and ${contacts.length - 10} more</p>` : ''}`;
+    $('bc-start').disabled = false;
+  };
+  reader.readAsText(file);
+});
+
+$('bc-start').addEventListener('click', async () => {
+  const btn = $('bc-start');
+  btn.disabled = true;
+  const profileId = $('bc-profile').value;
+  const delay = parseInt($('bc-delay').value) || 3;
+  const progress = $('bc-progress');
+  progress.style.display = 'block';
+  progress.max = batchContacts.length;
+  progress.value = 0;
+  let ok = 0, fail = 0;
+  for (let i = 0; i < batchContacts.length; i++) {
+    const c = batchContacts[i];
+    try {
+      const body = {
+        phone: c.phone,
+        lead_name: c.lead_name || 'there',
+        business_name: c.business_name || 'our company',
+        service_type: c.service_type || 'our service',
+        agent_profile_id: profileId || null,
+      };
+      await apiPost('/api/call', body);
+      ok++;
+    } catch { fail++; }
+    progress.value = i + 1;
+    if (i < batchContacts.length - 1) await new Promise(r => setTimeout(r, delay * 1000));
+  }
+  progress.style.display = 'none';
+  $('bc-result').innerHTML = `<span style="color:var(--accent)">✅ Done — ${ok} dispatched, ${fail} failed</span>`;
+  toast(`Batch: ${ok} dispatched, ${fail} failed`);
+  btn.disabled = false;
+});
+
+// ── Campaigns ──
+$('camp-custom-prompt-cb').addEventListener('change', () => {
+  $('camp-prompt').style.display = $('camp-custom-prompt-cb').checked ? 'block' : 'none';
+});
+
+$('camp-form').addEventListener('submit', async (e) => {
+  e.preventDefault();
+  const file = $('camp-csv').files[0];
+  if (!file) return toast('Upload a contacts CSV', 'err');
+  const reader = new FileReader();
+  reader.onload = async (ev) => {
+    const lines = ev.target.result.split('\n').filter(l => l.trim());
+    if (lines.length < 2) return toast('CSV needs header + data rows', 'err');
+    const headers = lines[0].split(',').map(h => h.trim().toLowerCase());
+    const contacts = [];
+    for (let i = 1; i < lines.length; i++) {
+      const vals = lines[i].split(',').map(v => v.trim());
+      const obj = {};
+      headers.forEach((h, idx) => obj[h] = vals[idx] || '');
+      if (obj.phone) contacts.push(obj);
+    }
+    try {
+      const body = {
+        name: $('camp-name').value.trim(),
+        contacts,
+        schedule_type: $('camp-schedule').value,
+        schedule_time: $('camp-time').value,
+        call_delay_seconds: parseInt($('camp-delay').value) || 3,
+        agent_profile_id: $('camp-profile').value || null,
+      };
+      if ($('camp-custom-prompt-cb').checked && $('camp-prompt').value.trim()) {
+        body.system_prompt = $('camp-prompt').value.trim();
+      }
+      const r = await apiPost('/api/campaigns', body);
+      $('camp-result').innerHTML = `<span style="color:var(--accent)">✅ Campaign created: ${r.campaign_id}</span>`;
+      toast(`Campaign "${body.name}" created`);
+      loadCampaigns();
+      $('camp-form').reset();
+    } catch (e) {
+      $('camp-result').innerHTML = `<span style="color:var(--danger)">❌ ${e.message}</span>`;
+    }
+  };
+  reader.readAsText(file);
+});
+
+async function loadCampaigns() {
+  try {
+    const campaigns = await api('/api/campaigns');
+    if (!campaigns || !campaigns.length) {
+      $('camp-list').innerHTML = '<div class="empty">No campaigns yet</div>';
+      return;
+    }
+    $('camp-list').innerHTML = `<table><thead><tr><th>Name</th><th>Status</th><th>Schedule</th><th>Contacts</th><th>Dispatched</th><th>Failed</th><th>Actions</th></tr></thead>
+      <tbody>${campaigns.map(c => `<tr>
+        <td>${c.name}</td>
+        <td><span class="badge ${c.status === 'active' ? 'badge-ok' : c.status === 'paused' ? 'badge-warn' : 'badge-info'}">${c.status}</span></td>
+        <td>${c.schedule_type} @ ${c.schedule_time || '09:00'}</td>
+        <td>${JSON.parse(c.contacts_json || '[]').length}</td>
+        <td>${c.total_dispatched || 0}</td>
+        <td>${c.total_failed || 0}</td>
+        <td>
+          <button class="btn btn-sm" onclick="runCampaign('${c.id}')">▶ Run</button>
+          <button class="btn btn-sm ${c.status === 'active' ? 'btn-danger' : 'btn-primary'}" onclick="toggleCampaignStatus('${c.id}','${c.status === 'active' ? 'paused' : 'active'}')">${c.status === 'active' ? '⏸ Pause' : '▶ Resume'}</button>
+          <button class="btn btn-sm btn-danger" onclick="deleteCampaign('${c.id}','${c.name}')">🗑</button>
+        </td>
+      </tr>`).join('')}</tbody></table>`;
+  } catch (e) { $('camp-list').innerHTML = `<div class="empty">Error: ${e.message}</div>`; }
+}
+
+window.runCampaign = async (id) => {
+  try {
+    await apiPost(`/api/campaigns/${id}/run`, {});
+    toast('Campaign dispatching');
+    setTimeout(loadCampaigns, 2000);
+  } catch (e) { toast(e.message, 'err'); }
+};
+window.toggleCampaignStatus = async (id, status) => {
+  try {
+    await apiPost(`/api/campaigns/${id}/status`, { status });
+    loadCampaigns();
+  } catch (e) { toast(e.message, 'err'); }
+};
+window.deleteCampaign = async (id, name) => {
+  if (!confirm(`Delete campaign "${name}"?`)) return;
+  try {
+    await apiDel(`/api/campaigns/${id}`);
+    toast('Campaign deleted');
+    loadCampaigns();
+  } catch (e) { toast(e.message, 'err'); }
+};
+
+// ── Agent Profiles ──
+$('agent-reset').addEventListener('click', () => {
+  $('agent-edit-id').value = '';
+  $('agent-name').value = '';
+  $('agent-voice').value = 'Aoede';
+  $('agent-model').value = 'gemini-3.1-flash-live-preview';
+  $('agent-tools').value = '[]';
+  $('agent-prompt').value = '';
+  $('agent-default').checked = false;
+  $('agent-form-title').textContent = 'Create Agent Profile';
+});
+
+$('agent-form').addEventListener('submit', async (e) => {
+  e.preventDefault();
+  const editId = $('agent-edit-id').value;
+  const body = {
+    name: $('agent-name').value.trim(),
+    voice: $('agent-voice').value,
+    model: $('agent-model').value,
+    system_prompt: $('agent-prompt').value.trim() || null,
+    enabled_tools: $('agent-tools').value.trim() || '[]',
+    is_default: $('agent-default').checked,
+  };
+  try {
+    if (editId) {
+      await api(`/api/agent-profiles/${editId}`, { method: 'PUT', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(body) });
+      toast('Profile updated');
+    } else {
+      await apiPost('/api/agent-profiles', body);
+      toast('Profile created');
+    }
+    $('agent-reset').click();
+    loadAgentProfiles();
+  } catch (e) { toast(e.message, 'err'); }
+});
+
+async function loadAgentProfiles() {
+  try {
+    const raw = await api('/api/agent-profiles');
+    const profiles = Array.isArray(raw) ? raw : [];
+    const tbody = profiles.map(p => `<tr>
+      <td>${p.name} ${p.is_default ? '⭐' : ''}</td>
+      <td>${p.voice}</td>
+      <td>${p.model}</td>
+      <td><button class="btn btn-sm" onclick="editAgentProfile('${p.id}')">✏️</button>
+      <button class="btn btn-sm" onclick="setDefaultAgentProfile('${p.id}')">★</button>
+      <button class="btn btn-sm btn-danger" onclick="deleteAgentProfile('${p.id}','${p.name}')">🗑</button></td>
+    </tr>`).join('');
+    $('agent-list').innerHTML = profiles.length ? `<table><thead><tr><th>Name</th><th>Voice</th><th>Model</th><th>Actions</th></tr></thead><tbody>${tbody}</tbody></table>` : '<div class="empty">No profiles yet</div>';
+
+    // Populate all dropdowns
+    const selects = ['call-profile', 'bc-profile', 'camp-profile'];
+    const opts = profiles.map(p => `<option value="${p.id}">${p.name}${p.is_default ? ' ⭐' : ''}</option>`);
+    selects.forEach(id => {
+      const sel = $(id);
+      if (!sel) return;
+      const val = sel.value;
+      sel.innerHTML = `<option value="">— Default —</option>${opts.join('')}`;
+      if (val) sel.value = val;
+    });
+  } catch (e) {
+    $('agent-list').innerHTML = `<div class="empty">Error: ${e.message}</div>`;
+  }
+}
+
+window.editAgentProfile = async (id) => {
+  try {
+    const p = await api(`/api/agent-profiles/${id}`);
+    $('agent-edit-id').value = p.id;
+    $('agent-name').value = p.name;
+    $('agent-voice').value = p.voice;
+    $('agent-model').value = p.model;
+    $('agent-tools').value = p.enabled_tools || '[]';
+    $('agent-prompt').value = p.system_prompt || '';
+    $('agent-default').checked = p.is_default === 1;
+    $('agent-form-title').textContent = 'Edit Agent Profile';
+    $('agent-form-title').scrollIntoView({ behavior: 'smooth' });
+  } catch (e) { toast(e.message, 'err'); }
+};
+window.deleteAgentProfile = async (id, name) => {
+  if (!confirm(`Delete "${name}"?`)) return;
+  try {
+    await apiDel(`/api/agent-profiles/${id}`);
+    toast('Deleted');
+    loadAgentProfiles();
+  } catch (e) { toast(e.message, 'err'); }
+};
+window.setDefaultAgentProfile = async (id) => {
+  try {
+    await apiPost(`/api/agent-profiles/${id}/set-default`, {});
+    toast('Default set');
+    loadAgentProfiles();
+  } catch (e) { toast(e.message, 'err'); }
+};
+
+// ── Prompt ──
+async function loadPrompt() {
+  try {
+    const d = await api('/api/prompt');
+    $('prompt-editor').value = d.prompt;
+    $('prompt-chars').textContent = `${d.prompt.length} chars | ${d.is_custom ? 'Custom' : 'Default'}`;
+  } catch (e) { toast(e.message, 'err'); }
+}
+$('prompt-editor').addEventListener('input', () => {
+  $('prompt-chars').textContent = `${$('prompt-editor').value.length} chars`;
+});
+$('prompt-save').addEventListener('click', async () => {
+  try {
+    await apiPost('/api/prompt', { prompt: $('prompt-editor').value });
+    $('prompt-result').innerHTML = '<span style="color:var(--accent)">✅ Saved</span>';
+    toast('Prompt saved');
+  } catch (e) { $('prompt-result').innerHTML = `<span style="color:var(--danger)">❌ ${e.message}</span>`; }
+});
+$('prompt-reset').addEventListener('click', async () => {
+  if (!confirm('Reset prompt to default?')) return;
+  try {
+    const d = await apiDel('/api/prompt');
+    $('prompt-editor').value = d.prompt;
+    $('prompt-chars').textContent = `${d.prompt.length} chars | Default`;
+    $('prompt-result').innerHTML = '<span style="color:var(--accent)">✅ Reset to default</span>';
+    toast('Prompt reset');
+  } catch (e) { $('prompt-result').innerHTML = `<span style="color:var(--danger)">❌ ${e.message}</span>`; }
+});
+
+// ── Appointments ──
+async function loadAppointments(date) {
+  try {
+    let url = '/api/appointments';
+    if (date) url += `?date=${date}`;
+    const data = await api(url);
+    if (!data.length) {
+      $('appt-list').innerHTML = '<div class="empty">No appointments</div>';
+      return;
+    }
+    $('appt-list').innerHTML = `<table><thead><tr><th>Name</th><th>Phone</th><th>Date</th><th>Time</th><th>Service</th><th>Status</th><th>Actions</th></tr></thead>
+      <tbody>${data.map(a => `<tr>
+        <td>${a.name}</td><td>${a.phone}</td><td>${a.date}</td><td>${a.time}</td>
+        <td>${a.service}</td>
+        <td><span class="badge ${a.status === 'booked' ? 'badge-ok' : 'badge-warn'}">${a.status}</span></td>
+        <td>${a.status === 'booked' ? `<button class="btn btn-sm btn-danger" onclick="cancelAppointment('${a.id}')">Cancel</button>` : ''}</td>
+      </tr>`).join('')}</tbody></table>`;
+  } catch (e) { $('appt-list').innerHTML = `<div class="empty">Error: ${e.message}</div>`; }
+}
+window.cancelAppointment = async (id) => {
+  if (!confirm('Cancel this appointment?')) return;
+  try {
+    await apiDel(`/api/appointments/${id}`);
+    toast('Cancelled');
+    loadAppointments($('appt-date').value || null);
+  } catch (e) { toast(e.message, 'err'); }
+};
+$('appt-filter').addEventListener('click', () => loadAppointments($('appt-date').value));
+$('appt-clear-filter').addEventListener('click', () => { $('appt-date').value = ''; loadAppointments(); });
+
+// ── Call Logs ──
+let currentCallPage = 1;
+async function loadCalls(page = 1) {
+  currentCallPage = page;
+  try {
+    const data = await api(`/api/calls?page=${page}&limit=20`);
+    if (!data.length) {
+      $('call-logs-table').innerHTML = '<div class="empty">No calls yet</div>';
+      $('call-pagination').style.display = 'none';
+      return;
+    }
+    $('call-pagination').style.display = 'flex';
+    $('call-page-info').textContent = `Page ${page}`;
+    $('call-logs-table').innerHTML = `<table><thead><tr><th>Phone</th><th>Lead</th><th>Outcome</th><th>Duration</th><th>Timestamp</th><th>Recording</th><th>Notes</th></tr></thead>
+      <tbody>${data.map(c => `<tr>
+        <td>${c.phone_number}</td>
+        <td>${c.lead_name || '—'}</td>
+        <td><span class="badge ${c.outcome === 'booked' ? 'badge-ok' : c.outcome === 'not_interested' ? 'badge-fail' : 'badge-warn'}">${c.outcome || '?'}</span></td>
+        <td>${c.duration_seconds || 0}s</td>
+        <td>${(c.timestamp || '').slice(0, 16)}</td>
+        <td>${c.recording_url ? `<a href="${c.recording_url}" target="_blank">🎧</a>` : '—'}</td>
+        <td><input class="inline-edit" value="${c.notes || ''}" placeholder="Add notes..." data-id="${c.id}" /></td>
+      </tr>`).join('')}</tbody></table>`;
+
+    // Add notes save on blur
+    document.querySelectorAll('.inline-edit').forEach(inp => {
+      inp.addEventListener('blur', async () => {
+        try {
+          await api(`/api/calls/${inp.dataset.id}/notes`, { method: 'PATCH', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ notes: inp.value }) });
+        } catch {}
+      });
+    });
+  } catch (e) { $('call-logs-table').innerHTML = `<div class="empty">Error: ${e.message}</div>`; }
+}
+$('call-prev').addEventListener('click', () => { if (currentCallPage > 1) loadCalls(currentCallPage - 1); });
+$('call-next').addEventListener('click', () => loadCalls(currentCallPage + 1));
+
+// ── CRM ──
+async function loadCRM() {
+  try {
+    const d = await api('/api/crm');
+    const contacts = d.data || [];
+    if (!contacts.length) {
+      $('crm-list').innerHTML = '<div class="empty">No contacts yet</div>';
+      return;
+    }
+    $('crm-list').innerHTML = `<table><thead><tr><th>Phone</th><th>Name</th><th>Calls</th><th>Booked</th><th>Last Call</th><th>Last Outcome</th><th>Actions</th></tr></thead>
+      <tbody>${contacts.map(c => `<tr>
+        <td>${c.phone_number}</td>
+        <td>${c.lead_name || '—'}</td>
+        <td>${c.total_calls}</td>
+        <td>${c.booked || 0}</td>
+        <td>${(c.last_call || '').slice(0, 16)}</td>
+        <td><span class="badge ${c.last_outcome === 'booked' ? 'badge-ok' : 'badge-warn'}">${c.last_outcome || '?'}</span></td>
+        <td><button class="btn btn-sm" onclick="loadContactDetail('${c.phone_number}')">🔍</button></td>
+      </tr>`).join('')}</tbody></table>`;
+  } catch (e) { $('crm-list').innerHTML = `<div class="empty">Error: ${e.message}</div>`; }
+}
+window.loadContactDetail = async (phone) => {
+  try {
+    const d = await api(`/api/crm/calls?phone=${encodeURIComponent(phone)}`);
+    const calls = d.data || [];
+    $('crm-detail-title').textContent = `📞 Contact: ${phone}`;
+    if (!calls.length) {
+      $('crm-detail-content').innerHTML = '<div class="empty">No call history</div>';
+    } else {
+      $('crm-detail-content').innerHTML = `<table><thead><tr><th>Timestamp</th><th>Outcome</th><th>Duration</th><th>Notes</th></tr></thead>
+        <tbody>${calls.map(c => `<tr><td>${(c.timestamp || '').slice(0,16)}</td>
+        <td><span class="badge ${c.outcome === 'booked' ? 'badge-ok' : 'badge-warn'}">${c.outcome || '?'}</span></td>
+        <td>${c.duration_seconds || 0}s</td><td>${c.notes || '—'}</td></tr>`).join('')}</tbody></table>`;
+    }
+    $('crm-detail').style.display = 'block';
+  } catch (e) { toast(e.message, 'err'); }
+};
+
+// ── Settings ──
+async function loadSettings() {
+  try {
+    const s = await api('/api/settings');
+    document.querySelectorAll('.setting-input').forEach(el => {
+      const key = el.dataset.key;
+      const val = s[key];
+      if (val !== undefined) {
+        if (el.type === 'checkbox') {
+          el.checked = val.value === 'true' || val.configured;
+        } else {
+          el.value = val.value || '';
+        }
+        // Show configured badge
+        const badge = el.parentElement.querySelector('.configured-badge');
+        if (badge) badge.remove();
+        const b = document.createElement('span');
+        b.className = 'configured-badge';
+        b.style.cssText = 'font-size:10px;margin-left:8px';
+        b.textContent = val.configured ? '✅' : '⚠️';
+        el.parentElement.insertBefore(b, el.nextSibling);
+      }
+    });
+  } catch (e) { toast(e.message, 'err'); }
+}
+
+document.querySelectorAll('.save-group').forEach(btn => {
+  btn.addEventListener('click', async () => {
+    const keys = btn.dataset.group.split(',');
+    const data = {};
+    keys.forEach(k => {
+      const el = document.querySelector(`.setting-input[data-key="${k}"]`);
+      if (el) {
+        if (el.type === 'checkbox') {
+          data[k] = el.checked ? 'true' : 'false';
+        } else {
+          data[k] = el.value;
+        }
+      }
+    });
+    try {
+      await apiPost('/api/settings', { settings: data });
+      toast('Settings saved');
+      loadSettings();
+    } catch (e) { toast(e.message, 'err'); }
+  });
+});
+
+$('create-trunk-btn').addEventListener('click', async () => {
+  const btn = $('create-trunk-btn');
+  btn.disabled = true; btn.textContent = '⏳ Creating...';
+  $('trunk-result').innerHTML = '';
+  try {
+    const r = await apiPost('/api/setup/trunk', {});
+    $('trunk-result').innerHTML = `<span style="color:var(--accent)">✅ Trunk created: ${r.trunk_id}</span>`;
+    toast(`SIP Trunk: ${r.trunk_id}`);
+    loadSettings();
+  } catch (e) {
+    $('trunk-result').innerHTML = `<span style="color:var(--danger)">❌ ${e.message}</span>`;
+  }
+  btn.disabled = false; btn.textContent = '⚡ Create SIP Trunk';
+});
+
+// ── System Logs ──
+let logRefreshInterval = null;
+let logRefreshOn = true;
+
+async function loadLogs() {
+  try {
+    const level = $('log-level').value;
+    const source = $('log-source').value;
+    let url = `/api/logs?limit=200`;
+    if (level) url += `&level=${level}`;
+    if (source) url += `&source=${source}`;
+    const data = await api(url);
+    if (!data.length) {
+      $('log-entries').innerHTML = '<div class="empty">No logs</div>';
+      return;
+    }
+    $('log-entries').innerHTML = data.map(l =>
+      `<pre class="log-line"><span class="log-ts">${(l.timestamp || '').slice(0,19)}</span> [<span class="log-level" style="color:${l.level === 'error' ? '#ff4d4d' : l.level === 'warning' ? '#ffaa00' : '#00ff88'}">${l.level}</span>] <span class="log-source">${l.source}</span> ${l.message}${l.detail ? ' — ' + l.detail : ''}</pre>`
+    ).join('');
+  } catch (e) { /* silent */ }
+}
+
+function scheduleLogsRefresh() {
+  if (logRefreshInterval) clearInterval(logRefreshInterval);
+  logRefreshInterval = setInterval(() => { if (logRefreshOn) loadLogs(); }, 5000);
+}
+$('log-toggle-refresh').addEventListener('click', () => {
+  logRefreshOn = !logRefreshOn;
+  $('log-refresh-status').textContent = logRefreshOn ? 'on' : 'off';
+  $('log-toggle-refresh').textContent = logRefreshOn ? 'Pause' : 'Resume';
+});
+$('log-clear').addEventListener('click', async () => {
+  try {
+    await apiDel('/api/logs');
+    loadLogs();
+    toast('Logs cleared');
+  } catch (e) { toast(e.message, 'err'); }
+});
+$('log-level').addEventListener('change', loadLogs);
+$('log-source').addEventListener('change', loadLogs);
+
+// ── Init ──
+function init() {
+  loadStats();
+  loadCalls();
+  loadAppointments();
+  loadLogs();
+  loadAgentProfiles();
+  loadCampaigns();
+  loadSettings();
+  loadPrompt();
+  loadCRM();
+  setInterval(loadStats, 10000);
+  scheduleLogsRefresh();
+}
+document.addEventListener('DOMContentLoaded', init);
+</script>
+</body>
+</html>
