@@ -14,6 +14,9 @@ trap cleanup SIGTERM SIGINT
 
 echo "🚀 Starting Outbound Mass Caller..."
 
+# Fix Windows terminal encoding for emoji support
+export PYTHONIOENCODING=utf-8
+
 # Only load .env if file exists AND we're NOT in a container (no Coolify/Docker env)
 # In production (Coolify/Docker), env vars are set directly — .env is for dev only
 if [ -f ".env" ] && [ -z "${COOLIFY_CONTAINER_ID:-}" ] && [ -z "${DOCKER_HOST:-}" ]; then
